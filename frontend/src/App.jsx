@@ -39,9 +39,14 @@ export default function App() {
   }, []);
 
   async function refreshAll() {
+    setError("");
     const [orderData, workerData] = await Promise.all([api.listOrders(), api.listWorkers()]);
     setOrders(orderData.orders);
     setWorkers(workerData.workers);
+  }
+
+  function clearGlobalError() {
+    setError("");
   }
 
   return (
@@ -56,6 +61,7 @@ export default function App() {
         onAssign={(orderId, workerId) => run(() => api.assignOrder(orderId, workerId))}
         onReview={(orderId, payload) => run(() => api.createReview(orderId, payload))}
         onRefresh={refreshAll}
+        onClearGlobalError={clearGlobalError}
       />
     </>
   );

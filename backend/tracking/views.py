@@ -22,21 +22,6 @@ def event_to_dict(event):
     }
 
 
-def get_order_current_stage(order):
-    last_event = order.progress_events.order_by("-created_at").first()
-    if last_event:
-        return last_event.stage
-    if order.status == MoveOrder.STATUS_PENDING:
-        return ProgressEvent.STAGE_CREATED
-    if order.status == MoveOrder.STATUS_CLAIMED:
-        return ProgressEvent.STAGE_CLAIMED
-    if order.status == MoveOrder.STATUS_ASSIGNED:
-        return ProgressEvent.STAGE_ASSIGNED
-    if order.status == MoveOrder.STATUS_COMPLETED:
-        return ProgressEvent.STAGE_COMPLETED
-    return None
-
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def add_progress(request, order_id):
@@ -48,7 +33,7 @@ def add_progress(request, order_id):
 
     stage = payload["stage"]
 
-    current_stage = get_order_current_stage(order)
+    current_stage = ProgressEvent.get_order_current_stage(order)
     if not ProgressEvent.can_transition(current_stage, stage):
         current_label = dict(ProgressEvent.STAGE_CHOICES).get(current_stage, current_stage or "未知")
         stage_label = dict(ProgressEvent.STAGE_CHOICES).get(stage, stage)

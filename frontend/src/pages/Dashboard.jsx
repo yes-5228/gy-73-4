@@ -14,6 +14,7 @@ export default function Dashboard({
   onAssign,
   onReview,
   onRefresh,
+  onClearGlobalError,
 }) {
   const stats = [
     ["待处理订单", orders.filter((order) => order.status !== "completed").length],
@@ -46,7 +47,7 @@ export default function Dashboard({
           <WorkerPanel workers={workers} onCreate={onCreateWorker} />
           <OrderBoard orders={orders} workers={workers} onClaim={onClaim} onAssign={onAssign} />
           <div className="side-stack">
-            <TrackingPanel orders={orders} onRefresh={onRefresh} />
+            <TrackingPanel orders={orders} onRefresh={onRefresh} onClearGlobalError={onClearGlobalError} />
             <ReviewPanel orders={orders} onReview={onReview} />
           </div>
         </div>

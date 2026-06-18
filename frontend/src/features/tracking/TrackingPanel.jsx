@@ -55,7 +55,7 @@ function canTransition(currentStage, nextStage) {
   return nextIdx === currentIdx + 1;
 }
 
-export default function TrackingPanel({ orders, onRefresh }) {
+export default function TrackingPanel({ orders, onRefresh, onClearGlobalError }) {
   const activeOrders = orders.filter((order) => order.status !== "completed");
   const [orderId, setOrderId] = useState("");
   const [stage, setStage] = useState("departed");
@@ -89,6 +89,7 @@ export default function TrackingPanel({ orders, onRefresh }) {
 
   async function submit(event) {
     event.preventDefault();
+    if (onClearGlobalError) onClearGlobalError();
     setErrorMsg("");
 
     if (!orderId) {

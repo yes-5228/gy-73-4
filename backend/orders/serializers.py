@@ -14,27 +14,8 @@ def worker_summary(worker):
     }
 
 
-def get_order_current_stage(order):
-    progress_events = getattr(order, "_prefetched_progress_events", None)
-    if progress_events is None:
-        progress_events = list(order.progress_events.all())
-    if progress_events:
-        last_event = max(progress_events, key=lambda e: e.created_at)
-        return last_event.stage
-    from orders.models import MoveOrder
-    if order.status == MoveOrder.STATUS_PENDING:
-        return ProgressEvent.STAGE_CREATED
-    if order.status == MoveOrder.STATUS_CLAIMED:
-        return ProgressEvent.STAGE_CLAIMED
-    if order.status == MoveOrder.STATUS_ASSIGNED:
-        return ProgressEvent.STAGE_ASSIGNED
-    if order.status == MoveOrder.STATUS_COMPLETED:
-        return ProgressEvent.STAGE_COMPLETED
-    return None
-
-
 def order_to_dict(order, include_detail=False):
-    current_stage = get_order_current_stage(order)
+    current_stage = ProgressEvent.get_order_current_stage(order)
     data = {
         "id": order.id,
         "customer_name": order.customer_name,

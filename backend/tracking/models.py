@@ -75,3 +75,27 @@ class ProgressEvent(models.Model):
         if next_idx < len(cls.STAGE_ORDER):
             return [cls.STAGE_ORDER[next_idx]]
         return []
+
+    @classmethod
+    def get_order_current_stage(cls, order):
+        from orders.models import MoveOrder
+
+        progress_events = getattr(order, "_prefetched_progress_events", None)
+        if progress_events is not None:
+            if progress_events:
+                last_event = max(progress_events, key=lambda e: e.created_at)
+                return last_event.stage
+        else:
+            last_event = order.progress_events.order_by("-created_at").first()
+            if last_event:
+                return last_event.stage
+
+        if order.status == MoveOrder.STATUS_PENDING:
+            return cls.STAGE_CREATED
+        if order.status == MoveOrder.STATUS_CLAIMED:
+            return cls.STAGE_CLAIMED
+        if order.status == MoveOrder.STATUS_ASSIGNED:
+            return cls.STAGE_ASSIGNED
+        if order.status == MoveOrder.STATUS_COMPLETED:
+            return cls.STAGE_COMPLETED
+        return None
