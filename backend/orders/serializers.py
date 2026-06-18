@@ -14,7 +14,27 @@ def worker_summary(worker):
     }
 
 
+def get_order_current_stage(order):
+    progress_events = getattr(order, "_prefetched_progress_events", None)
+    if progress_events is None:
+        progress_events = list(order.progress_events.all())
+    if progress_events:
+        last_event = max(progress_events, key=lambda e: e.created_at)
+        return last_event.stage
+    from orders.models import MoveOrder
+    if order.status == MoveOrder.STATUS_PENDING:
+        return ProgressEvent.STAGE_CREATED
+    if order.status == MoveOrder.STATUS_CLAIMED:
+        return ProgressEvent.STAGE_CLAIMED
+    if order.status == MoveOrder.STATUS_ASSIGNED:
+        return ProgressEvent.STAGE_ASSIGNED
+    if order.status == MoveOrder.STATUS_COMPLETED:
+        return ProgressEvent.STAGE_COMPLETED
+    return None
+
+
 def order_to_dict(order, include_detail=False):
+    current_stage = get_order_current_stage(order)
     data = {
         "id": order.id,
         "customer_name": order.customer_name,
@@ -27,12 +47,17 @@ def order_to_dict(order, include_detail=False):
         "note": order.note,
         "status": order.status,
         "status_label": order.get_status_display(),
+        "current_stage": current_stage,
+        "current_stage_label": dict(ProgressEvent.STAGE_CHOICES).get(current_stage, current_stage or "未知"),
         "claimed_by": worker_summary(order.claimed_by),
         "assigned_to": worker_summary(order.assigned_to),
         "created_at": order.created_at.isoformat(),
         "updated_at": order.updated_at.isoformat(),
     }
     if include_detail:
+        progress_events = getattr(order, "_prefetched_progress_events", None)
+        if progress_events is None:
+            progress_events = list(ProgressEvent.objects.filter(order=order))
         data["progress"] = [
             {
                 "id": event.id,
@@ -41,7 +66,7 @@ def order_to_dict(order, include_detail=False):
                 "message": event.message,
                 "created_at": event.created_at.isoformat(),
             }
-            for event in ProgressEvent.objects.filter(order=order)
+            for event in progress_events
         ]
         review = ServiceReview.objects.filter(order=order).first()
         data["review"] = (

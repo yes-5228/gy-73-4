@@ -22,6 +22,21 @@ def event_to_dict(event):
     }
 
 
+def get_order_current_stage(order):
+    last_event = order.progress_events.order_by("-created_at").first()
+    if last_event:
+        return last_event.stage
+    if order.status == MoveOrder.STATUS_PENDING:
+        return ProgressEvent.STAGE_CREATED
+    if order.status == MoveOrder.STATUS_CLAIMED:
+        return ProgressEvent.STAGE_CLAIMED
+    if order.status == MoveOrder.STATUS_ASSIGNED:
+        return ProgressEvent.STAGE_ASSIGNED
+    if order.status == MoveOrder.STATUS_COMPLETED:
+        return ProgressEvent.STAGE_COMPLETED
+    return None
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def add_progress(request, order_id):
@@ -32,6 +47,23 @@ def add_progress(request, order_id):
         worker = get_object_or_404(Worker, pk=payload["worker_id"])
 
     stage = payload["stage"]
+
+    current_stage = get_order_current_stage(order)
+    if not ProgressEvent.can_transition(current_stage, stage):
+        current_label = dict(ProgressEvent.STAGE_CHOICES).get(current_stage, current_stage or "未知")
+        stage_label = dict(ProgressEvent.STAGE_CHOICES).get(stage, stage)
+        valid_next = ProgressEvent.get_valid_next_stages(current_stage)
+        valid_labels = [dict(ProgressEvent.STAGE_CHOICES).get(s, s) for s in valid_next]
+        current_idx = ProgressEvent.get_stage_index(current_stage)
+        completed_idx = ProgressEvent.get_stage_index(ProgressEvent.STAGE_COMPLETED)
+        if current_idx >= completed_idx:
+            error_msg = f"订单已完成，无法继续更新进度"
+        else:
+            error_msg = f"非法进度跳转：当前状态「{current_label}」不能直接提交「{stage_label}」"
+            if valid_labels:
+                error_msg += f"，合法的下一步为：{'、'.join(valid_labels)}"
+        return JsonResponse({"error": error_msg}, status=400)
+
     event = ProgressEvent.objects.create(
         order=order,
         worker=worker,
