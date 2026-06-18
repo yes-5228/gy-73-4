@@ -12,7 +12,6 @@ export default function Dashboard({
   onCreateWorker,
   onClaim,
   onAssign,
-  onProgress,
   onReview,
   onRefresh,
 }) {
@@ -47,7 +46,7 @@ export default function Dashboard({
           <WorkerPanel workers={workers} onCreate={onCreateWorker} />
           <OrderBoard orders={orders} workers={workers} onClaim={onClaim} onAssign={onAssign} />
           <div className="side-stack">
-            <TrackingPanel orders={orders} onProgress={onProgress} onRefresh={onRefresh} />
+            <TrackingPanel orders={orders} onRefresh={onRefresh} />
             <ReviewPanel orders={orders} onReview={onReview} />
           </div>
         </div>

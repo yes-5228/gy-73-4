@@ -55,7 +55,7 @@ function canTransition(currentStage, nextStage) {
   return nextIdx === currentIdx + 1;
 }
 
-export default function TrackingPanel({ orders, onProgress, onRefresh }) {
+export default function TrackingPanel({ orders, onRefresh }) {
   const activeOrders = orders.filter((order) => order.status !== "completed");
   const [orderId, setOrderId] = useState("");
   const [stage, setStage] = useState("departed");

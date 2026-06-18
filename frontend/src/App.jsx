@@ -54,7 +54,6 @@ export default function App() {
         onCreateWorker={(payload) => run(() => api.createWorker(payload))}
         onClaim={(orderId, workerId) => run(() => api.claimOrder(orderId, workerId))}
         onAssign={(orderId, workerId) => run(() => api.assignOrder(orderId, workerId))}
-        onProgress={(orderId, payload) => run(() => api.addProgress(orderId, payload))}
         onReview={(orderId, payload) => run(() => api.createReview(orderId, payload))}
         onRefresh={refreshAll}
       />
