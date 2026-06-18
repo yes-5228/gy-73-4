@@ -38,6 +38,12 @@ export default function App() {
     run(async () => refresh());
   }, []);
 
+  async function refreshAll() {
+    const [orderData, workerData] = await Promise.all([api.listOrders(), api.listWorkers()]);
+    setOrders(orderData.orders);
+    setWorkers(workerData.workers);
+  }
+
   return (
     <>
       {error && <div className="toast">{error}</div>}
@@ -50,6 +56,7 @@ export default function App() {
         onAssign={(orderId, workerId) => run(() => api.assignOrder(orderId, workerId))}
         onProgress={(orderId, payload) => run(() => api.addProgress(orderId, payload))}
         onReview={(orderId, payload) => run(() => api.createReview(orderId, payload))}
+        onRefresh={refreshAll}
       />
     </>
   );

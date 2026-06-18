@@ -1,5 +1,6 @@
 import { MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "../../api/client.js";
 
 const STAGE_ORDER = [
   "created",
@@ -54,30 +55,44 @@ function canTransition(currentStage, nextStage) {
   return nextIdx === currentIdx + 1;
 }
 
-export default function TrackingPanel({ orders, onProgress }) {
+export default function TrackingPanel({ orders, onProgress, onRefresh }) {
   const activeOrders = orders.filter((order) => order.status !== "completed");
   const [orderId, setOrderId] = useState("");
   const [stage, setStage] = useState("departed");
-  const [localError, setLocalError] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const selectedOrder = orders.find((o) => String(o.id) === String(orderId));
+  const selectedOrder = useMemo(
+    () => orders.find((o) => String(o.id) === String(orderId)),
+    [orders, orderId]
+  );
   const currentStage = selectedOrder?.current_stage;
 
-  const validNextStages = getValidNextStages(currentStage);
-  const availableStages = TRACKABLE_STAGES.filter(([value]) => validNextStages.includes(value));
+  const validNextStages = useMemo(
+    () => getValidNextStages(currentStage),
+    [currentStage]
+  );
+  const availableStages = useMemo(
+    () => TRACKABLE_STAGES.filter(([value]) => validNextStages.includes(value)),
+    [validNextStages]
+  );
 
   useEffect(() => {
-    setLocalError("");
-    if (availableStages.length > 0 && !availableStages.find(([v]) => v === stage)) {
-      setStage(availableStages[0][0]);
+    setErrorMsg("");
+    const nextStages = getValidNextStages(currentStage);
+    const nextTrackable = TRACKABLE_STAGES.filter(([value]) => nextStages.includes(value));
+    if (nextTrackable.length > 0) {
+      const firstValue = nextTrackable[0][0];
+      setStage((prev) => (prev !== firstValue ? firstValue : prev));
     }
-  }, [orderId]);
+  }, [orderId, currentStage]);
 
   async function submit(event) {
     event.preventDefault();
-    setLocalError("");
+    setErrorMsg("");
+
     if (!orderId) {
-      setLocalError("请先选择订单");
+      setErrorMsg("请先选择订单");
       return;
     }
     if (!canTransition(currentStage, stage)) {
@@ -85,18 +100,29 @@ export default function TrackingPanel({ orders, onProgress }) {
       const stageLabel = STAGE_LABELS[stage] || stage;
       const validLabels = validNextStages.map((s) => STAGE_LABELS[s] || s);
       if (getStageIndex(currentStage) >= getStageIndex("completed")) {
-        setLocalError("订单已完成，无法继续更新进度");
+        setErrorMsg("订单已完成，无法继续更新进度");
       } else {
         let msg = `非法进度跳转：当前状态「${currentLabel}」不能直接提交「${stageLabel}」`;
         if (validLabels.length > 0) {
           msg += `，合法的下一步为：${validLabels.join("、")}`;
         }
-        setLocalError(msg);
+        setErrorMsg(msg);
       }
       return;
     }
-    const label = STAGE_LABELS[stage] || stage;
-    await onProgress(Number(orderId), { stage, message: `师傅更新进度：${label}` });
+
+    setSubmitting(true);
+    try {
+      const label = STAGE_LABELS[stage] || stage;
+      await api.addProgress(Number(orderId), { stage, message: `师傅更新进度：${label}` });
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (err) {
+      setErrorMsg(err.message || "更新失败，请重试");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -105,9 +131,25 @@ export default function TrackingPanel({ orders, onProgress }) {
         <MapPin size={20} />
         <h3>进度跟踪</h3>
       </div>
-      {localError && <div className="form-error" style={{ marginBottom: 12, color: "#dc2626", fontSize: 14 }}>{localError}</div>}
+      {errorMsg && (
+        <div className="panel-error" style={{
+          marginBottom: 12,
+          padding: "10px 12px",
+          background: "#fef2f2",
+          border: "1px solid #fecaca",
+          borderRadius: 8,
+          color: "#dc2626",
+          fontSize: 14,
+        }}>
+          {errorMsg}
+        </div>
+      )}
       <form className="inline-form" onSubmit={submit}>
-        <select value={orderId} onChange={(e) => setOrderId(e.target.value)}>
+        <select
+          value={orderId}
+          onChange={(e) => setOrderId(e.target.value)}
+          disabled={submitting}
+        >
           <option value="">选择订单</option>
           {activeOrders.map((order) => (
             <option value={order.id} key={order.id}>
@@ -115,7 +157,11 @@ export default function TrackingPanel({ orders, onProgress }) {
             </option>
           ))}
         </select>
-        <select value={stage} onChange={(e) => setStage(e.target.value)} disabled={availableStages.length === 0}>
+        <select
+          value={stage}
+          onChange={(e) => setStage(e.target.value)}
+          disabled={availableStages.length === 0 || submitting}
+        >
           {availableStages.length === 0 ? (
             <option value="">无可用进度</option>
           ) : (
@@ -124,8 +170,12 @@ export default function TrackingPanel({ orders, onProgress }) {
             ))
           )}
         </select>
-        <button className="primary-button" type="submit" disabled={!orderId || availableStages.length === 0}>
-          更新进度
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={!orderId || availableStages.length === 0 || submitting}
+        >
+          {submitting ? "提交中…" : "更新进度"}
         </button>
       </form>
       <div className="timeline">
