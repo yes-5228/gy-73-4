@@ -2,6 +2,16 @@ import { MapPin } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api/client.js";
 
+const panelErrorStyle = {
+  marginBottom: 12,
+  padding: "10px 12px",
+  background: "#fef2f2",
+  border: "1px solid #fecaca",
+  borderRadius: 8,
+  color: "#dc2626",
+  fontSize: 14,
+};
+
 const STAGE_ORDER = [
   "created",
   "claimed",
@@ -55,7 +65,7 @@ function canTransition(currentStage, nextStage) {
   return nextIdx === currentIdx + 1;
 }
 
-export default function TrackingPanel({ orders, onRefresh, onClearGlobalError }) {
+export default function TrackingPanel({ orders, onRefresh }) {
   const activeOrders = orders.filter((order) => order.status !== "completed");
   const [orderId, setOrderId] = useState("");
   const [stage, setStage] = useState("departed");
@@ -89,7 +99,6 @@ export default function TrackingPanel({ orders, onRefresh, onClearGlobalError })
 
   async function submit(event) {
     event.preventDefault();
-    if (onClearGlobalError) onClearGlobalError();
     setErrorMsg("");
 
     if (!orderId) {
@@ -132,19 +141,7 @@ export default function TrackingPanel({ orders, onRefresh, onClearGlobalError })
         <MapPin size={20} />
         <h3>进度跟踪</h3>
       </div>
-      {errorMsg && (
-        <div className="panel-error" style={{
-          marginBottom: 12,
-          padding: "10px 12px",
-          background: "#fef2f2",
-          border: "1px solid #fecaca",
-          borderRadius: 8,
-          color: "#dc2626",
-          fontSize: 14,
-        }}>
-          {errorMsg}
-        </div>
-      )}
+      {errorMsg && <div style={panelErrorStyle}>{errorMsg}</div>}
       <form className="inline-form" onSubmit={submit}>
         <select
           value={orderId}

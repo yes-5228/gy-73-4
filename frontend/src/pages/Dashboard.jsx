@@ -5,17 +5,7 @@ import ReviewPanel from "../features/reviews/ReviewPanel.jsx";
 import TrackingPanel from "../features/tracking/TrackingPanel.jsx";
 import WorkerPanel from "../features/workers/WorkerPanel.jsx";
 
-export default function Dashboard({
-  orders,
-  workers,
-  onCreateOrder,
-  onCreateWorker,
-  onClaim,
-  onAssign,
-  onReview,
-  onRefresh,
-  onClearGlobalError,
-}) {
+export default function Dashboard({ orders, workers, onRefresh }) {
   const stats = [
     ["待处理订单", orders.filter((order) => order.status !== "completed").length],
     ["服务中", orders.filter((order) => order.status === "in_progress").length],
@@ -43,12 +33,12 @@ export default function Dashboard({
       <section className="content">
         <SectionHeader eyebrow="Dispatch Center" title="调度总览" />
         <div className="layout-grid">
-          <OrderForm onCreate={onCreateOrder} />
-          <WorkerPanel workers={workers} onCreate={onCreateWorker} />
-          <OrderBoard orders={orders} workers={workers} onClaim={onClaim} onAssign={onAssign} />
+          <OrderForm onRefresh={onRefresh} />
+          <WorkerPanel workers={workers} onRefresh={onRefresh} />
+          <OrderBoard orders={orders} workers={workers} onRefresh={onRefresh} />
           <div className="side-stack">
-            <TrackingPanel orders={orders} onRefresh={onRefresh} onClearGlobalError={onClearGlobalError} />
-            <ReviewPanel orders={orders} onReview={onReview} />
+            <TrackingPanel orders={orders} onRefresh={onRefresh} />
+            <ReviewPanel orders={orders} onRefresh={onRefresh} />
           </div>
         </div>
       </section>

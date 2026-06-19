@@ -11,58 +11,23 @@ const seedWorkers = [
 export default function App() {
   const [orders, setOrders] = useState([]);
   const [workers, setWorkers] = useState([]);
-  const [error, setError] = useState("");
 
-  async function refresh() {
+  async function refreshAll() {
     const [orderData, workerData] = await Promise.all([api.listOrders(), api.listWorkers()]);
     setOrders(orderData.orders);
     setWorkers(workerData.workers);
     if (workerData.workers.length === 0) {
       await Promise.all(seedWorkers.map((worker) => api.createWorker(worker)));
-      const seededWorkers = await api.listWorkers();
-      setWorkers(seededWorkers.workers);
-    }
-  }
-
-  async function run(action) {
-    try {
-      setError("");
-      await action();
-      await refresh();
-    } catch (err) {
-      setError(err.message);
+      const seeded = await api.listWorkers();
+      setWorkers(seeded.workers);
     }
   }
 
   useEffect(() => {
-    run(async () => refresh());
+    refreshAll().catch(() => {});
   }, []);
 
-  async function refreshAll() {
-    setError("");
-    const [orderData, workerData] = await Promise.all([api.listOrders(), api.listWorkers()]);
-    setOrders(orderData.orders);
-    setWorkers(workerData.workers);
-  }
-
-  function clearGlobalError() {
-    setError("");
-  }
-
   return (
-    <>
-      {error && <div className="toast">{error}</div>}
-      <Dashboard
-        orders={orders}
-        workers={workers}
-        onCreateOrder={(payload) => run(() => api.createOrder(payload))}
-        onCreateWorker={(payload) => run(() => api.createWorker(payload))}
-        onClaim={(orderId, workerId) => run(() => api.claimOrder(orderId, workerId))}
-        onAssign={(orderId, workerId) => run(() => api.assignOrder(orderId, workerId))}
-        onReview={(orderId, payload) => run(() => api.createReview(orderId, payload))}
-        onRefresh={refreshAll}
-        onClearGlobalError={clearGlobalError}
-      />
-    </>
+    <Dashboard orders={orders} workers={workers} onRefresh={refreshAll} />
   );
 }
